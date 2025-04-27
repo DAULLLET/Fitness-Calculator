@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Калькулятор Фитнес-Целей</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #0f172a, #1e293b);
+      color: #f8fafc;
+      min-height: 100vh;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+    h1 {
+      margin-top: 30px;
+      font-size: 2rem;
+      color: #facc15;
+    }
+    form {
+      background: #1e293b;
+      padding: 25px;
+      border-radius: 15px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      margin-top: 20px;
+    }
+    input, select, button {
+      width: 100%;
+      margin-bottom: 15px;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      font-size: 1rem;
+      background: #334155;
+      color: #f8fafc;
+    }
+    select {
+      background: #334155;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    button {
+      background: #facc15;
+      color: #000;
+      font-weight: bold;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background: #eab308;
+    }
+    .result {
+      margin-top: 25px;
+      padding: 20px;
+      background: #334155;
+      border-radius: 15px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      font-size: 1rem;
+    }
+    .footer {
+      margin-top: 20px;
+      font-size: 0.8rem;
+      color: #94a3b8;
+      text-align: center;
+    }
+    #modeToggle {
+      margin-top: 20px;
+      background-color: #facc15;
+      padding: 10px;
+      font-size: 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    body.light-mode {
+      background: #f8fafc;
+      color: #333;
+    }
+    body.light-mode .form, body.light-mode .result {
+      background: #fff;
+      color: #333;
+    }
+    body.light-mode button {
+      background: #000;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Калькулятор Фитнес-Целей</h1>
+
+  <form id="calcForm">
+    <input type="number" id="age" placeholder="Возраст" required>
+    <input type="number" id="weight" placeholder="Вес (кг)" required>
+    <input type="number" id="height" placeholder="Рост (см)" required>
+    <select id="gender" required>
+      <option value="">Пол</option>
+      <option value="male">Мужской</option>
+      <option value="female">Женский</option>
+    </select>
+    <select id="activity" required>
+      <option value="">Уровень активности</option>
+      <option value="1.2">Сидячий: Мало или нет упражнений, большая часть дня сидячая</option>
+      <option value="1.375">Легкая активность: Упражнения 1-2 раза в неделю, 2-5 тыс. шагов в день</option>
+      <option value="1.55">Умеренная активность: Упражнения 3-4 раза в неделю, 5-10 тыс. шагов в день</option>
+      <option value="1.725">Активная активность: Упражнения 5+ раз в неделю, 10 тыс. шагов в день</option>
+      <option value="1.9">Очень активная: Интенсивные тренировки 6-7 раз в неделю + 15 тыс. шагов в день</option>
+    </select>
+    <input type="number" id="bodyfat" placeholder="Процент жира в теле" min="0" max="100" required>
+    <select id="goal" required>
+      <option value="">Цель</option>
+      <option value="cut">Потеря жира</option>
+      <option value="bulk">Набор массы</option>
+      <option value="recomp">Рекомпозиция тела</option>
+      <option value="maintenance">Поддержание веса</option>
+    </select>
+    <button type="submit">Рассчитать</button>
+  </form>
+
+  <div class="result" id="result" style="display:none;"></div>
+
+  <div class="footer">made by daulet bauyrzhanuly</div>
+
+  <button id="modeToggle">Переключить на светлый режим</button>
+
+  <canvas id="weightChart" width="400" height="200"></canvas>
+
+<script>
+  let chartInstance = null;
+
+  document.getElementById('calcForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const age = parseInt(document.getElementById('age').value);
+    const weight = parseFloat(document.getElementById('weight').value);
+    const height = parseInt(document.getElementById('height').value);
+    const gender = document.getElementById('gender').value;
+    const activity = parseFloat(document.getElementById('activity').value);
+    const goal = document.getElementById('goal').value;
+    const bodyfat = parseFloat(document.getElementById('bodyfat').value);
+    
+    if (!age || !weight || !height || !gender || !activity || !goal || !bodyfat) {
+      alert('Пожалуйста, заполните все поля.');
+      return;
+    }
+
+    let bmr;
+    
+    const leanMass = weight * (1 - (bodyfat / 100));
+    bmr = 370 + (21.6 * leanMass);
+
+    const maintenance = bmr * activity;
+    let calories;
+    let weeklyChange;
+
+    if (goal === 'cut') {
+      calories = maintenance - 500;
+      weeklyChange = "Ожидаемая потеря жира: ~0.5 кг/неделю.";
+    } else if (goal === 'bulk') {
+      calories = maintenance + 300;
+      weeklyChange = "Ожидаемый прирост мышц: ~0.25 кг/неделю.";
+    } else if (goal === 'recomp') {
+      calories = maintenance - (Math.random() * 100 + 200); // slight deficit of 200-300 calories
+      weeklyChange = "Ожидаемые постепенные улучшения в балансе мышц и жира.";
+    } else if (goal === 'maintenance') {
+      calories = maintenance;
+      weeklyChange = "Поддержание текущего веса.";
+    }
+
+    const protein = weight * 2.2;
+    const fat = weight * 0.8;
+    const carbs = (calories - (protein * 4) - (fat * 9)) / 4;
+
+    document.getElementById('result').style.display = 'block';
+    document.getElementById('result').innerHTML = ` 
+      <h3>🎯 Ваши Результаты</h3>
+      <p><strong>Калории для поддержания:</strong> ${Math.round(maintenance)} ккал/день</p>
+      <p><strong>Целевые калории:</strong> ${Math.round(calories)} ккал/день</p>
+      <p><strong>Рекомендуемые макроэлементы:</strong></p>
+      <ul>
+        <li>Белки: ${Math.round(protein)} г/день</li>
+        <li>Жиры: ${Math.round(fat)} г/день</li>
+        <li>Углеводы: ${Math.round(carbs)} г/день</li>
+      </ul>
+      <p><strong>Ожидаемое изменение за неделю:</strong> ${weeklyChange}</p>
+    `;
+
+    const weightData = [];
+    let initialWeight = weight;
+    let weeklyChangeValue = (goal === 'cut') ? -0.5 : (goal === 'bulk') ? 0.25 : (goal === 'recomp') ? (Math.random() * 0.2 - 0.1) : 0;
+
+    for (let i = 0; i < 8; i++) {
+      weightData.push(initialWeight + (weeklyChangeValue * (i + 1)));
+    }
+
+    if (chartInstance) {
+      chartInstance.destroy();
+    }
+
+    const ctx = document.getElementById('weightChart').getContext('2d');
+    chartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: ['Неделя 1', 'Неделя 2', 'Неделя 3', 'Неделя 4', 'Неделя 5', 'Неделя 6', 'Неделя 7', 'Неделя 8'],
+        datasets: [{
+          label: 'Прогнозируемый вес',
+          data: weightData,
+          borderColor: '#facc15',
+          fill: false,
+          tension: 0.1
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          title: {
+            display: true,
+            text: 'Прогнозируемый вес с течением времени'
+          }
+        }
+      }
+    });
+  });
+
+  document.getElementById('modeToggle').addEventListener('click', function() {
+    document.body.classList.toggle('light-mode');
+    const mode = document.body.classList.contains('light-mode') ? 'Light' : 'Dark';
+    document.getElementById('modeToggle').textContent = `Переключить на ${mode} режим`;
+  });
+</script>
+
+</body>
+</html>
